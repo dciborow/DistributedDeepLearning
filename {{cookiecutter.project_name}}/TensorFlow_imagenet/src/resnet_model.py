@@ -32,11 +32,7 @@ def batch_norm_relu(inputs, is_training, relu=True, init_zero=False,
     else:
         gamma_initializer = tf.ones_initializer()
 
-    if data_format == 'channels_first':
-        axis = 1
-    else:
-        axis = 3
-
+    axis = 1 if data_format == 'channels_first' else 3
     inputs = tf.layers.batch_normalization(
         inputs=inputs,
         axis=axis,
@@ -71,14 +67,15 @@ def fixed_padding(inputs, kernel_size, data_format='channels_first'):
     pad_total = kernel_size - 1
     pad_beg = pad_total // 2
     pad_end = pad_total - pad_beg
-    if data_format == 'channels_first':
-        padded_inputs = tf.pad(inputs, [[0, 0], [0, 0],
-                                        [pad_beg, pad_end], [pad_beg, pad_end]])
-    else:
-        padded_inputs = tf.pad(inputs, [[0, 0], [pad_beg, pad_end],
-                                        [pad_beg, pad_end], [0, 0]])
-
-    return padded_inputs
+    return (
+        tf.pad(
+            inputs, [[0, 0], [0, 0], [pad_beg, pad_end], [pad_beg, pad_end]]
+        )
+        if data_format == 'channels_first'
+        else tf.pad(
+            inputs, [[0, 0], [pad_beg, pad_end], [pad_beg, pad_end], [0, 0]]
+        )
+    )
 
 
 def conv2d_fixed_padding(inputs, filters, kernel_size, strides,

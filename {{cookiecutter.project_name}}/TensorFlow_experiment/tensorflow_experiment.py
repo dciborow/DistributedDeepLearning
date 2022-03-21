@@ -18,16 +18,6 @@ def submit_local(c):
     raise NotImplementedError(
         "You need to modify this call before being able to use it"
     )
-    from aml_compute import TFExperimentCLI
-    exp = TFExperimentCLI("<YOUR-EXPERIMENT-NAME>")
-    run = exp.submit_local(
-        os.path.join(_BASE_PATH, "src"),
-        "<YOUR-TRAINING-SCRIPT>",
-        {"YOUR": "ARGS"},
-        dependencies_file=os.path.join(_BASE_PATH, "environment_gpu.yml"),
-        wait_for_completion=True,
-    )
-    print(run)
 
 
 @task
@@ -39,17 +29,6 @@ def submit_remote(c, node_count=int(env_values["CLUSTER_MAX_NODES"])):
     raise NotImplementedError(
         "You need to modify this call before being able to use it"
     )
-    from aml_compute import TFExperimentCLI
-    exp = TFExperimentCLI("<YOUR-EXPERIMENT-NAME>")
-    run = exp.submit(
-        os.path.join(_BASE_PATH, "src"),
-        "<YOUR-TRAINING-SCRIPT>",
-        {"YOUR": "ARGS"},
-        node_count=node_count,
-        dependencies_file=os.path.join(_BASE_PATH, "environment_gpu.yml"),
-        wait_for_completion=True,
-    )
-    print(run)
 
 
 @task
@@ -64,23 +43,6 @@ def submit_images_remote(c, node_count=int(env_values["CLUSTER_MAX_NODES"])):
     raise NotImplementedError(
         "You need to modify this call before being able to use it"
     )
-    from aml_compute import TFExperimentCLI
-    exp = TFExperimentCLI("<YOUR-EXPERIMENT-NAME>")
-    run = exp.submit(
-        os.path.join(_BASE_PATH, "src"),
-        "<YOUR-TRAINING-SCRIPT>",
-        {
-            "--training_data_path": "{datastore}/train",
-            "--validation_data_path": "{datastore}/validation",
-            "--epochs": "1",
-            "--data_type": "images",
-            "--data-format": "channels_first",
-        },
-        node_count=node_count,
-        dependencies_file=os.path.join(_BASE_PATH, "environment_gpu.yml"),
-        wait_for_completion=True,
-    )
-    print(run)
 
 
 @task
@@ -95,23 +57,6 @@ def submit_images_local(c):
     raise NotImplementedError(
         "You need to modify this call before being able to use it"
     )
-    from aml_compute import TFExperimentCLI
-    exp = TFExperimentCLI("<YOUR-EXPERIMENT-NAME>")
-    run = exp.submit_local(
-        os.path.join(_BASE_PATH, "src"),
-        "<YOUR-TRAINING-SCRIPT>",
-        {
-            "--training_data_path": "/data/train",
-            "--validation_data_path": "/data/validation",
-            "--epochs": "1",
-            "--data_type": "images",
-            "--data-format": "channels_first",
-        },
-        dependencies_file="TensorFlow_imagenet/environment_gpu.yml",
-        docker_args=["-v", f"{env_values['data']}:/data"],
-        wait_for_completion=True,
-    )
-    print(run)
 
 
 remote_collection = Collection("remote")

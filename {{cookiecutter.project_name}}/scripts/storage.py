@@ -68,7 +68,7 @@ def store_key(c):
         and env_values["ACCOUNT_KEY"]
         and len(env_values["ACCOUNT_KEY"]) > 0
     ):
-        logger.info(f"Account key already in env file")
+        logger.info("Account key already in env file")
         return None
 
     cmd = f"az storage account keys list -n {account_name} -g {resource_group}"
@@ -100,7 +100,7 @@ def create_container(c):
     account_name = env_values.get("ACCOUNT_NAME")
     account_key = env_values.get("ACCOUNT_KEY")
     if _container_exists(c, container_name, account_name, account_key):
-        logger.info(f"Container already exists")
+        logger.info("Container already exists")
         return None
 
     cmd = (

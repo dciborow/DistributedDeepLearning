@@ -6,10 +6,7 @@ from tensorflow.python.training import training_util
 
 
 def str_to_bool(in_str):
-    if "t" in in_str.lower():
-        return True
-    else:
-        return False
+    return "t" in in_str.lower()
 
 
 class ExamplesPerSecondHook(session_run_hook.SessionRunHook):

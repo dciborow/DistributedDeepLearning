@@ -139,7 +139,7 @@ def _create_datastore(
     account_key,
     create_if_not_exists=True,
 ):
-    ds = Datastore.register_azure_blob_container(
+    return Datastore.register_azure_blob_container(
         workspace=aml_workspace,
         datastore_name=datastore_name,
         container_name=container_name,
@@ -147,7 +147,6 @@ def _create_datastore(
         account_key=account_key,
         create_if_not_exists=create_if_not_exists,
     )
-    return ds
 
 
 class ExperimentCLI(object):
@@ -162,7 +161,7 @@ class ExperimentCLI(object):
     ):
 
         self._logger = logging.getLogger(__name__)
-        self._logger.info("SDK version:" + str(azureml.core.VERSION))
+        self._logger.info(f"SDK version:{str(azureml.core.VERSION)}")
         self._ws = workspace_for_user(
             workspace_name=workspace_name,
             resource_group=resource_group,
@@ -250,10 +249,7 @@ class ExperimentCLI(object):
 
 
 def _has_key(input_dict, key):
-    for v in input_dict.values:
-        if key in v:
-            return True
-    return False
+    return any(key in v for v in input_dict.values)
 
 
 def _fill_param_with(input_dict, parameters_dict):
@@ -376,8 +372,9 @@ class TFExperimentCLI(ExperimentCLI):
         # TEMPORARY HACK: Bugs with AML necessitate the code below, once fixed remove
         estimator.conda_dependencies.remove_pip_package("horovod==0.15.2")
         estimator.conda_dependencies.remove_pip_package(
-            "tensorflow==" + TENSORFLOW_DEFAULT_VERSION
+            f"tensorflow=={TENSORFLOW_DEFAULT_VERSION}"
         )
+
         estimator.conda_dependencies.add_pip_package("tensorflow-gpu==1.12.0")
         estimator.conda_dependencies.add_pip_package("horovod==0.15.2")
 
@@ -389,11 +386,10 @@ class TFExperimentCLI(ExperimentCLI):
 
     def _complete_datastore(self, script_params):
         def _replace(value):
-            if isinstance(value, str) and "{datastore}" in value:
-                data_path = value.replace("{datastore}/", "")
-                return self.datastore.path(data_path).as_mount()
-            else:
+            if not isinstance(value, str) or "{datastore}" not in value:
                 return value
+            data_path = value.replace("{datastore}/", "")
+            return self.datastore.path(data_path).as_mount()
 
         return {key: _replace(value) for key, value in script_params.items()}
 
@@ -444,10 +440,7 @@ def tensorboard(runs):
     """
     logger = logging.getLogger(__name__)
     logger.info(f"Starting tensorboard {pformat(runs)}")
-    if isinstance(runs, list):
-        return Tensorboard(runs)
-    else:
-        return Tensorboard([runs])
+    return Tensorboard(runs) if isinstance(runs, list) else Tensorboard([runs])
 
 
 def _start_and_wait(tb):
@@ -471,11 +464,11 @@ def _select_runs(experiment, runs=None, status=("Running",)):
             selected_runs = [
                 run.aml_run for run in experiment.runs if run.aml_run.status in status
             ]
-            if len(selected_runs) == 0:
+            if not selected_runs:
                 logger.warn("No runs found")
         return selected_runs
     except KeyError as e:
-        logger.warn(f"Did not find run!")
+        logger.warn("Did not find run!")
         raise e
 
 

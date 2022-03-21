@@ -22,12 +22,11 @@ if DISTRIBUTED:
 
 
 def _get_rank():
-    if DISTRIBUTED:
-        try:
-            return hvd.rank()
-        except:
-            return 0
-    else:
+    if not DISTRIBUTED:
+        return 0
+    try:
+        return hvd.rank()
+    except:
         return 0
 
 
@@ -87,31 +86,30 @@ def input_fn():
 
 
 def _get_runconfig(is_distributed=DISTRIBUTED, save_checkpoints_steps=None):
-    if is_distributed:
-        # Horovod: pin GPU to be used to process local rank (one GPU per process)
-        config = tf.ConfigProto()
-        config.gpu_options.allow_growth = True
-        config.gpu_options.visible_device_list = str(hvd.local_rank())
+    if not is_distributed:
+        return tf.estimator.RunConfig(
+            save_checkpoints_steps=save_checkpoints_steps,
+            save_checkpoints_secs=None,
+            log_step_count_steps=100,
+        )
+    # Horovod: pin GPU to be used to process local rank (one GPU per process)
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    config.gpu_options.visible_device_list = str(hvd.local_rank())
 
-        return tf.estimator.RunConfig(
-            save_checkpoints_steps=save_checkpoints_steps,
-            save_checkpoints_secs=None,
-            session_config=config,
-            log_step_count_steps=100,
-        )
-    else:
-        return tf.estimator.RunConfig(
-            save_checkpoints_steps=save_checkpoints_steps,
-            save_checkpoints_secs=None,
-            log_step_count_steps=100,
-        )
+    return tf.estimator.RunConfig(
+        save_checkpoints_steps=save_checkpoints_steps,
+        save_checkpoints_secs=None,
+        session_config=config,
+        log_step_count_steps=100,
+    )
 
 
 def _get_hooks(is_distributed=DISTRIBUTED):
     logger = logging.getLogger(__name__)
     if is_distributed:
         bcast_hook = hvd.BroadcastGlobalVariablesHook(0)
-        logger.info("Rank: {} Cluster Size {}".format(hvd.local_rank(), hvd.size()))
+        logger.info(f"Rank: {hvd.local_rank()} Cluster Size {hvd.size()}")
         return [bcast_hook]
     else:
         return []
@@ -136,7 +134,7 @@ def main():
         "momentum": MOMENTUM,
         "classes": NUM_CLASSES,
     }
-    logger.info("Creating estimator with params: {}".format(params))
+    logger.info(f"Creating estimator with params: {params}")
     model = tf.estimator.Estimator(
         model_fn=model_fn, params=params, config=run_config
     )

@@ -44,9 +44,8 @@ def image_bytes_serving_input_fn(image_shape, dtype=tf.float32):
     # Bounding box around the whole image.
     bbox = tf.constant([0.0, 0.0, 1.0, 1.0], dtype=dtype, shape=[1, 1, 4])
     height, width, num_channels = image_shape
-    image = imagenet_preprocessing.preprocess_image(
+    return imagenet_preprocessing.preprocess_image(
         image_bytes, bbox, height, width, num_channels, is_training=False)
-    return image
 
   image_bytes_list = tf.compat.v1.placeholder(
       shape=[None], dtype=tf.string, name='input_tensor')

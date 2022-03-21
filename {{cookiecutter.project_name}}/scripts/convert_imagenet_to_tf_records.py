@@ -126,7 +126,7 @@ def _convert_to_example(filename, image_buffer, label, text, height, width):
     channels = 3
     image_format = "JPEG"
 
-    example = tf.train.Example(
+    return tf.train.Example(
         features=tf.train.Features(
             feature={
                 "image/height": _int64_feature(height),
@@ -143,7 +143,6 @@ def _convert_to_example(filename, image_buffer, label, text, height, width):
             }
         )
     )
-    return example
 
 
 class ImageCoder(object):
@@ -255,11 +254,11 @@ def _process_image(filename, coder):
     # Clean the dirty data.
     if _is_png(filename):
         # 1 image is a PNG.
-        print("Converting PNG to JPEG for %s" % filename)
+        print(f"Converting PNG to JPEG for {filename}")
         image_data = coder.png_to_jpeg(image_data)
     elif _is_cmyk(filename):
         # 22 JPEG images are in CMYK colorspace.
-        print("Converting CMYK to RGB for %s" % filename)
+        print(f"Converting CMYK to RGB for {filename}")
         image_data = coder.cmyk_to_rgb(image_data)
 
     # Decode the RGB JPEG.
@@ -329,7 +328,7 @@ def _process_image_files_batch(
                 image_buffer, height, width = _process_image(filename, coder)
             except Exception as e:
                 print(e)
-                print("SKIPPED: Unexpected error while decoding %s." % filename)
+                print(f"SKIPPED: Unexpected error while decoding {filename}.")
                 continue
 
             example = _convert_to_example(
@@ -375,10 +374,7 @@ def _process_image_files(name, filenames, texts, labels, num_shards, output_dire
     num_threads = 2
     # Break all images into batches with a [ranges[i][0], ranges[i][1]].
     spacing = np.linspace(0, len(filenames), num_threads + 1).astype(np.int)
-    ranges = []
-    for i in range(len(spacing) - 1):
-        ranges.append([spacing[i], spacing[i + 1]])
-
+    ranges = [[spacing[i], spacing[i + 1]] for i in range(len(spacing) - 1)]
     # Launch a thread for each batch.
     print("Launching %d threads for spacings: %s" % (num_threads, ranges))
     sys.stdout.flush()
@@ -445,7 +441,7 @@ def _find_image_files(data_dir, labels_file):
     texts: list of strings; each string is the class, e.g. 'dog'
     labels: list of integer; each integer identifies the ground truth.
   """
-    print("Determining list of input files and labels from %s." % data_dir)
+    print(f"Determining list of input files and labels from {data_dir}.")
 
     with open(labels_file) as f:
         labels_dict = json.load(f)

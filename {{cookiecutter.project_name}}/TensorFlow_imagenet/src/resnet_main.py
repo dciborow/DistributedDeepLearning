@@ -21,12 +21,11 @@ if defaults.DISTRIBUTED:
 
 
 def _get_rank():
-    if defaults.DISTRIBUTED:
-        try:
-            return hvd.rank()
-        except:
-            return 0
-    else:
+    if not defaults.DISTRIBUTED:
+        return 0
+    try:
+        return hvd.rank()
+    except:
         return 0
 
 
@@ -81,7 +80,7 @@ def model_fn(features, labels, mode, params):
         tf.estimator.EstimatorSpec: Estimator specification
     """
     logger = logging.getLogger(__name__)
-    logger.info("Creating model in {} mode".format(mode))
+    logger.info(f"Creating model in {mode} mode")
 
     logits = build_network(features, mode, params)
 
@@ -109,11 +108,12 @@ def model_fn(features, labels, mode, params):
     metrics = {"accuracy": accuracy}
 
     if mode == tf.estimator.ModeKeys.EVAL:
-        eval_hook_list = []
         eval_tensors_log = {"acc": accuracy[1]}
-        eval_hook_list.append(
-            tf.train.LoggingTensorHook(tensors=eval_tensors_log, every_n_iter=100)
-        )
+        eval_hook_list = [
+            tf.train.LoggingTensorHook(
+                tensors=eval_tensors_log, every_n_iter=100
+            )
+        ]
 
         return tf.estimator.EstimatorSpec(
             mode=mode,
@@ -126,11 +126,10 @@ def model_fn(features, labels, mode, params):
 
     train_op = optimizer.minimize(loss=loss, global_step=tf.train.get_global_step())
 
-    train_hook_list = []
     train_tensors_log = {"loss": loss, "acc": accuracy[1]}
-    train_hook_list.append(
+    train_hook_list = [
         tf.train.LoggingTensorHook(tensors=train_tensors_log, every_n_iter=100)
-    )
+    ]
 
     return tf.estimator.EstimatorSpec(
         mode=mode, loss=loss, train_op=train_op, training_hooks=train_hook_list
@@ -138,24 +137,23 @@ def model_fn(features, labels, mode, params):
 
 
 def _get_runconfig(is_distributed=defaults.DISTRIBUTED, save_checkpoints_steps=None):
-    if is_distributed:
-        # Horovod: pin GPU to be used to process local rank (one GPU per process)
-        config = tf.ConfigProto()
-        config.gpu_options.allow_growth = True
-        config.gpu_options.visible_device_list = str(hvd.local_rank())
+    if not is_distributed:
+        return tf.estimator.RunConfig(
+            save_checkpoints_steps=save_checkpoints_steps,
+            save_checkpoints_secs=None,
+            log_step_count_steps=100,
+        )
+    # Horovod: pin GPU to be used to process local rank (one GPU per process)
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    config.gpu_options.visible_device_list = str(hvd.local_rank())
 
-        return tf.estimator.RunConfig(
-            save_checkpoints_steps=save_checkpoints_steps,
-            save_checkpoints_secs=None,
-            session_config=config,
-            log_step_count_steps=100,
-        )
-    else:
-        return tf.estimator.RunConfig(
-            save_checkpoints_steps=save_checkpoints_steps,
-            save_checkpoints_secs=None,
-            log_step_count_steps=100,
-        )
+    return tf.estimator.RunConfig(
+        save_checkpoints_steps=save_checkpoints_steps,
+        save_checkpoints_secs=None,
+        session_config=config,
+        log_step_count_steps=100,
+    )
 
 
 def _get_hooks(batch_size, is_distributed=defaults.DISTRIBUTED):
@@ -164,7 +162,7 @@ def _get_hooks(batch_size, is_distributed=defaults.DISTRIBUTED):
     if is_distributed:
         exps_hook = ExamplesPerSecondHook(batch_size * hvd.size())
         bcast_hook = hvd.BroadcastGlobalVariablesHook(0)
-        logger.info("Rank: {} Cluster Size {}".format(hvd.rank(), hvd.size()))
+        logger.info(f"Rank: {hvd.rank()} Cluster Size {hvd.size()}")
         return [bcast_hook, exps_hook]
     else:
         exps_hook = ExamplesPerSecondHook(batch_size)
@@ -172,29 +170,20 @@ def _get_hooks(batch_size, is_distributed=defaults.DISTRIBUTED):
 
 
 def _is_master(is_distributed=defaults.DISTRIBUTED):
-    if is_distributed:
-        if hvd.rank() == 0:
-            return True
-        else:
-            return False
-    else:
-        return True
+    return bool(is_distributed and hvd.rank() == 0 or not is_distributed)
 
 
 def _log_summary(total_images, batch_size, duration):
     logger = logging.getLogger(__name__)
     images_per_second = total_images / duration
-    logger.info("Data length:      {}".format(total_images))
+    logger.info(f"Data length:      {total_images}")
     logger.info("Total duration:   {:.3f}".format(duration))
     logger.info("Total images/sec: {:.3f}".format(images_per_second))
     logger.info(
-        "Batch size:       (Per GPU {}: Total {})".format(
-            batch_size, hvd.size() * batch_size if defaults.DISTRIBUTED else batch_size
-        )
+        f"Batch size:       (Per GPU {batch_size}: Total {hvd.size() * batch_size if defaults.DISTRIBUTED else batch_size})"
     )
-    logger.info(
-        "Distributed:      {}".format("True" if defaults.DISTRIBUTED else "False")
-    )
+
+    logger.info(f'Distributed:      {"True" if defaults.DISTRIBUTED else "False"}')
     logger.info(
         "Num GPUs:         {:.3f}".format(hvd.size() if defaults.DISTRIBUTED else 1)
     )

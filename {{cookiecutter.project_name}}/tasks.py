@@ -36,7 +36,7 @@ def _prompt_sub_id_selection(c):
     import json
     from prompt_toolkit import prompt
 
-    results = c.run(f"az account list", pty=True, hide="out")
+    results = c.run("az account list", pty=True, hide="out")
     sub_dict = json.loads(results.stdout)
     sub_list = [
         {"Index": i, "Name": sub["name"], "id": sub["id"]}
@@ -126,7 +126,7 @@ def tensorboard(c, experiment, runs=None):
     """
     cmd = f"tmux neww -d -n tensorboard python control/src/aml_compute.py tensorboard --experiment {experiment} "
     if runs:
-        cmd = cmd + f"--runs {runs}"
+        cmd = f"{cmd}--runs {runs}"
     c.run(cmd)
 
 
